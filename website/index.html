@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crop Yield Prediction</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --secondary-color: #45a049;
+            --background-color: #f9f9f9;
+            --card-color: #ffffff;
+            --text-color: #333333;
+            --border-color: #dddddd;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--background-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background-color: var(--card-color);
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #e8f5e9;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .result h2 {
+            color: var(--primary-color);
+            margin-top: 0;
+        }
+
+        .error {
+            color: #d32f2f;
+            font-size: 14px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid var(--primary-color);
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .card {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Crop Yield Prediction</h1>
+        
+        <div class="card">
+            <form id="predictionForm">
+                <div class="form-group">
+                    <label for="area">Area</label>
+                    <input type="text" id="area" name="area" placeholder="Enter area (e.g., Alabama, Alaska)">
+                    <div class="error" id="areaError">Please enter a valid area</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="item">Item</label>
+                    <input type="text" id="item" name="item" placeholder="Enter crop item (e.g., Wheat, Maize)">
+                    <div class="error" id="itemError">Please enter a valid crop item</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="year">Year</label>
+                    <input type="number" id="year" name="year" placeholder="Enter year (e.g., 2023)" min="1900" max="2100">
+                    <div class="error" id="yearError">Please enter a valid year between 1900 and 2100</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="rainfall">Average Rainfall (mm per year)</label>
+                    <input type="number" id="rainfall" name="average_rain_fall_mm_per_year" placeholder="Enter average rainfall" step="0.01" min="0">
+                    <div class="error" id="rainfallError">Please enter a valid positive number</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="pesticides">Pesticides (tonnes)</label>
+                    <input type="number" id="pesticides" name="pesticides_tonnes" placeholder="Enter pesticides amount" step="0.01" min="0">
+                    <div class="error" id="pesticidesError">Please enter a valid positive number</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="temp">Average Temperature (°C)</label>
+                    <input type="number" id="temp" name="avg_temp" placeholder="Enter average temperature" step="0.1">
+                    <div class="error" id="tempError">Please enter a valid temperature</div>
+                </div>
+                
+                <button type="submit" id="predictButton">Predict Yield</button>
+            </form>
+            
+            <div class="loading" id="loadingIndicator">
+                <div class="spinner"></div>
+                <p>Processing your request...</p>
+            </div>
+            
+            <div class="result" id="resultContainer">
+                <h2>Prediction Result</h2>
+                <p>The predicted yield is: <strong id="predictedYield">0</strong> hg/ha</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('predictionForm');
+            const predictButton = document.getElementById('predictButton');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const resultContainer = document.getElementById('resultContainer');
+            const predictedYield = document.getElementById('predictedYield');
+            
+            // API endpoint - update this to match your FastAPI endpoint
+            const API_URL = 'http://localhost:8000/predict'; // Change if your API is hosted elsewhere
+            
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                // Validate inputs
+                if (!validateForm()) {
+                    return;
+                }
+                
+                // Disable button and show loading
+                predictButton.disabled = true;
+                loadingIndicator.style.display = 'block';
+                resultContainer.style.display = 'none';
+                
+                try {
+                    // Get form data
+                    const formData = {
+                        Area: document.getElementById('area').value,
+                        Item: document.getElementById('item').value,
+                        Year: parseInt(document.getElementById('year').value),
+                        average_rain_fall_mm_per_year: parseFloat(document.getElementById('rainfall').value),
+                        pesticides_tonnes: parseFloat(document.getElementById('pesticides').value),
+                        avg_temp: parseFloat(document.getElementById('temp').value)
+                    };
+                    
+                    // Make API request
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(formData)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Display result
+                    predictedYield.textContent = data.hg_ha_yield.toFixed(2);
+                    resultContainer.style.display = 'block';
+                    
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('An error occurred while making the prediction. Please try again.');
+                } finally {
+                    // Re-enable button and hide loading
+                    predictButton.disabled = false;
+                    loadingIndicator.style.display = 'none';
+                }
+            });
+            
+            function validateForm() {
+                let isValid = true;
+                
+                // Validate area
+                const area = document.getElementById('area').value.trim();
+                if (area === '') {
+                    document.getElementById('areaError').style.display = 'block';
+                    isValid = false;
+                } else {
+                    document.getElementById('areaError').style.display = 'none';
+                }
+                
+                // Validate item
+                const item = document.getElementById('item').value.trim();
+                if (item === '') {
+                    document.getElementById('itemError').style.display = 'block';
+                    isValid = false;
+                } else {
+                    document.getElementById('itemError').style.display = 'none';
+                }
+                
+                // Validate year
+                const year = parseInt(document.getElementById('year').value);
+                if (isNaN(year)) {
+                    document.getElementById('yearError').style.display = 'block';
+                    isValid = false;
+                } else {
+                    document.getElementById('yearError').style.display = 'none';
+                }
+                
+                // Validate rainfall
+                const rainfall = parseFloat(document.getElementById('rainfall').value);
+                if (isNaN(rainfall) || rainfall < 0) {
+                    document.getElementById('rainfallError').style.display = 'block';
+                    isValid = false;
+                } else {
+                    document.getElementById('rainfallError').style.display = 'none';
+                }
+                
+                // Validate pesticides
+                const pesticides = parseFloat(document.getElementById('pesticides').value);
+                if (isNaN(pesticides) || pesticides < 0) {
+                    document.getElementById('pesticidesError').style.display = 'block';
+                    isValid = false;
+                } else {
+                    document.getElementById('pesticidesError').style.display = 'none';
+                }
+                
+                // Validate temperature
+                const temp = parseFloat(document.getElementById('temp').value);
+                if (isNaN(temp)) {
+                    document.getElementById('tempError').style.display = 'block';
+                    isValid = false;
+                } else {
+                    document.getElementById('tempError').style.display = 'none';
+                }
+                
+                return isValid;
+            }
+            
+            // Add input validation on blur
+            document.getElementById('area').addEventListener('blur', function() {
+                if (this.value.trim() === '') {
+                    document.getElementById('areaError').style.display = 'block';
+                } else {
+                    document.getElementById('areaError').style.display = 'none';
+                }
+            });
+            
+            document.getElementById('item').addEventListener('blur', function() {
+                if (this.value.trim() === '') {
+                    document.getElementById('itemError').style.display = 'block';
+                } else {
+                    document.getElementById('itemError').style.display = 'none';
+                }
+            });
+            
+            document.getElementById('year').addEventListener('blur', function() {
+                const year = parseInt(this.value);
+                if (isNaN(year) || year < 1900 || year > 2100) {
+                    document.getElementById('yearError').style.display = 'block';
+                } else {
+                    document.getElementById('yearError').style.display = 'none';
+                }
+            });
+            
+            document.getElementById('rainfall').addEventListener('blur', function() {
+                const val = parseFloat(this.value);
+                if (isNaN(val) || val < 0) {
+                    document.getElementById('rainfallError').style.display = 'block';
+                } else {
+                    document.getElementById('rainfallError').style.display = 'none';
+                }
+            });
+            
+            document.getElementById('pesticides').addEventListener('blur', function() {
+                const val = parseFloat(this.value);
+                if (isNaN(val) || val < 0) {
+                    document.getElementById('pesticidesError').style.display = 'block';
+                } else {
+                    document.getElementById('pesticidesError').style.display = 'none';
+                }
+            });
+            
+            document.getElementById('temp').addEventListener('blur', function() {
+                const val = parseFloat(this.value);
+                if (isNaN(val)) {
+                    document.getElementById('tempError').style.display = 'block';
+                } else {
+                    document.getElementById('tempError').style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
